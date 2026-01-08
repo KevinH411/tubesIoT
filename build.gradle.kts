@@ -32,6 +32,7 @@ dependencies {
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	implementation("com.fazecast:jSerialComm:2.10.4")
 }
 
 tasks.withType<Test> {
