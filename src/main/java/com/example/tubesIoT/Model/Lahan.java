@@ -2,6 +2,7 @@ package com.example.tubesIoT.Model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -11,6 +12,7 @@ import java.util.List;
 @Table(name = "lahan")
 @AllArgsConstructor
 @NoArgsConstructor
+@Data
 public class Lahan {
 
     @Id

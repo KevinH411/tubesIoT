@@ -1,6 +1,6 @@
 package com.example.tubesIoT.Config;
 
-import com.example.tubesIoT.Model.SensorData;
+import com.example.tubesIoT.Model.SensorReading;
 import com.example.tubesIoT.Repository.SensorReadingRepository;
 import com.fazecast.jSerialComm.SerialPort;
 import java.util.Scanner;
@@ -94,7 +94,7 @@ public class XBeeReceiver {
         if (data != null && data.startsWith("SM:")) {
             try {
                 String[] parts = data.split(";");
-                SensorData entity = new SensorData();
+                SensorReading entity = new SensorReading();
 
                 for (String part : parts) {
                     String[] pair = part.split(":");
