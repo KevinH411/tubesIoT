@@ -1,4 +1,4 @@
-package com.example.tubesIoT;
+package com.example.tubesIoT.Config;
 
 import javax.sql.DataSource;
 

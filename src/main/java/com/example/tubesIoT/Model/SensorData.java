@@ -1,4 +1,4 @@
-package com.example.tubesIoT;
+package com.example.tubesIoT.Model;
 
 import jakarta.persistence.*;
 import lombok.Data;
