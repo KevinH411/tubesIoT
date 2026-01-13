@@ -10,7 +10,7 @@ description = "Demo project for Spring Boot"
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
+		languageVersion = JavaLanguageVersion.of(24)
 	}
 }
 
@@ -25,14 +25,19 @@ repositories {
 }
 
 dependencies {
+	implementation ("org.springframework.boot:spring-boot-starter")
+	implementation ("org.springframework.boot:spring-boot-starter-web")
 	implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
+	implementation ("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-web")
+	runtimeOnly ("org.postgresql:postgresql")
+	runtimeOnly("com.h2database:h2")
 	compileOnly("org.projectlombok:lombok")
 	developmentOnly("org.springframework.boot:spring-boot-devtools")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-	implementation("com.fazecast:jSerialComm:2.10.4")
+	implementation("com.fazecast:jSerialComm:[2.0.0,)")
 }
 
 tasks.withType<Test> {
