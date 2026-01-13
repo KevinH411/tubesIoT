@@ -1,7 +1,7 @@
 package com.example.tubesIoT.Config;
 
 import com.example.tubesIoT.Model.SensorData;
-import com.example.tubesIoT.Repository.SensorDataRepository;
+import com.example.tubesIoT.Repository.SensorReadingRepository;
 import com.fazecast.jSerialComm.SerialPort;
 import java.util.Scanner;
 
@@ -36,7 +36,7 @@ import jakarta.annotation.PostConstruct;
 @Profile("!test") // biar waktu xbee nya g dipake masih bisa build
 public class XBeeReceiver {
     @Autowired
-    private SensorDataRepository sensorRepository;
+    private SensorReadingRepository sensorRepository;
 
     @Value("${xbee.port}")
     private String portName;
