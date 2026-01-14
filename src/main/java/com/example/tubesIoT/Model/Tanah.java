@@ -1,9 +1,11 @@
 package com.example.tubesIoT.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.util.List;
 import java.util.Set;
@@ -13,6 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@ToString(exclude = {"lahanList", "users"})
 public class Tanah {
 
     @Id
@@ -26,9 +29,11 @@ public class Tanah {
     @Column(nullable = false)
     private String address;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "tanah", cascade = CascadeType.ALL)
     private List<Lahan> lahanList;
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "tanahList")
     private Set<User> users;
 }

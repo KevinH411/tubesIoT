@@ -1,42 +1,34 @@
 package com.example.tubesIoT;
 
 import com.example.tubesIoT.Model.SensorReading;
+import com.example.tubesIoT.Repository.LahanRepository;
 import com.example.tubesIoT.Repository.SensorReadingRepository;
 import com.fazecast.jSerialComm.SerialPort;
-import java.util.Scanner;
-
+import com.fazecast.jSerialComm.SerialPortDataListener;
+import com.fazecast.jSerialComm.SerialPortEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
-
-// buat cara makenya buat @Autowired di filenya
-// abis gitu pake xBeeReceiver.getLatestMessage()
-// karena ngebacanya pake thread, kodenya bakal jalan terus jadi harus pake stopper
-// ini antara pake while(true) sama Thread.sleep(500) ato fungsinya kasih @Scheduled(fixedDelay=500) tapi ga usah di loop, itu 500ms
-
-// @Autowired
-// private XBeeReceiver xbeeReceiver;
-
-// @Scheduled(fixedDelay = 500)
-// public void readSensor() {
-//     String data = xbeeReceiver.getLatestMessage();
-//     if (data != null) {
-//         System.out.println("Received: " + data);
-//         // parse & save to DB
-//     }
-// }
-
-//itu kode diatas buat nerima stringnya darisini
+import jakarta.annotation.PreDestroy;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 
 @Component
-@Profile("!test") // biar waktu xbee nya g dipake masih bisa build
+@Profile("!test")
 public class XBeeReceiver {
+    private static final Logger logger = LoggerFactory.getLogger(XBeeReceiver.class);
+
     @Autowired
     private SensorReadingRepository sensorRepository;
+
+    @Autowired
+    private LahanRepository lahanRepository;
 
     @Value("${xbee.port}")
     private String portName;
@@ -44,92 +36,159 @@ public class XBeeReceiver {
     @Value("${xbee.baud}")
     private int baudRate;
 
-    private volatile String latestMessage = null;
     private SerialPort globalPort;
+    private final StringBuilder buffer = new StringBuilder();
 
     @PostConstruct
     public void init() {
-        try {
-            SerialPort port = SerialPort.getCommPort(portName);
-            this.globalPort = port;
-            port.setBaudRate(baudRate);
-            port.setComPortTimeouts(
-                    SerialPort.TIMEOUT_READ_BLOCKING,
-                    0, 0);
+        logger.info("====================================================");
+        logger.info("🔍 MEMULAI DEBUGGING XBEE");
+        logger.info("📍 Port Target: {}", portName);
+        logger.info("🚀 Baud Rate: {}", baudRate);
+        logger.info("====================================================");
 
-            if (!port.openPort()) {
-                System.err.println("⚠ XBee not connected on " + portName);
-                globalPort = null;
-                return; // JANGAN crash Spring
+        try {
+            globalPort = SerialPort.getCommPort(portName);
+            
+            // Log semua port yang tersedia untuk membantu user jika portName salah
+            SerialPort[] availablePorts = SerialPort.getCommPorts();
+            logger.info("📋 Port yang terdeteksi di sistem: {}", 
+                Arrays.stream(availablePorts).map(SerialPort::getSystemPortName).toList());
+
+            globalPort.setBaudRate(baudRate);
+            globalPort.setNumDataBits(8);
+            globalPort.setNumStopBits(SerialPort.ONE_STOP_BIT);
+            globalPort.setParity(SerialPort.NO_PARITY);
+            globalPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 2000, 0);
+
+            if (!globalPort.openPort()) {
+                logger.error("❌ GAGAL MEMBUKA PORT: {}. Kemungkinan penyebab:", portName);
+                logger.error("   1. Port sedang digunakan aplikasi lain (Serial Monitor/Kode Tes).");
+                logger.error("   2. Nama port salah (Cek daftar port di atas).");
+                logger.error("   3. Kabel USB/XBee tidak terhubung dengan baik.");
+                return;
             }
 
-            new Thread(() -> {
-                try (Scanner scanner = new Scanner(port.getInputStream())) {
-                    while (scanner.hasNextLine()) {
-                        latestMessage = scanner.nextLine().trim();
+            logger.info("✅ PORT BERHASIL DIBUKA: {}", portName);
+
+            globalPort.addDataListener(new SerialPortDataListener() {
+                @Override
+                public int getListeningEvents() {
+                    return SerialPort.LISTENING_EVENT_DATA_AVAILABLE;
+                }
+
+                @Override
+                public void serialEvent(SerialPortEvent event) {
+                    if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return;
+
+                    int bytesAvailable = globalPort.bytesAvailable();
+                    if (bytesAvailable <= 0) return;
+
+                    byte[] newData = new byte[bytesAvailable];
+                    int numRead = globalPort.readBytes(newData, newData.length);
+                    
+                    if (numRead > 0) {
+                        String rawPart = new String(newData, 0, numRead, StandardCharsets.US_ASCII);
+                        logger.debug("📥 Raw Bytes Masuk ({} bytes): [{}]", numRead, rawPart.replace("\n", "\\n").replace("\r", "\\r"));
+                        
+                        buffer.append(rawPart);
+                        
+                        // Proses jika ada newline (pesan lengkap)
+                        int newlineIndex;
+                        while ((newlineIndex = buffer.indexOf("\n")) != -1) {
+                            String fullMessage = buffer.substring(0, newlineIndex).trim();
+                            buffer.delete(0, newlineIndex + 1);
+                            
+                            if (!fullMessage.isEmpty()) {
+                                logger.info("📩 PESAN LENGKAP DITERIMA: '{}'", fullMessage);
+                                processAndSaveToDb(fullMessage);
+                            }
+                        }
                     }
                 }
-            }).start();
-
-            System.out.println("✅ XBee connected on " + portName);
+            });
 
         } catch (Exception e) {
-            System.err.println("⚠ XBee init failed: " + e.getMessage());
-            globalPort = null;
+            logger.error("💥 CRITICAL ERROR saat inisialisasi: ", e);
         }
     }
 
-    @Scheduled(fixedDelay = 5000)
-    public void processAndSaveToDb() {
-        // 1. Kirim perintah "send" ke Arduino (sesuai logika arduino_code.ino)
+    @PreDestroy
+    public void cleanup() {
         if (globalPort != null && globalPort.isOpen()) {
-            byte[] command = "send\n".getBytes();
-            globalPort.writeBytes(command, command.length);
-        }
-
-        // 2. Ambil pesan terbaru
-        String data = getLatestMessage();
-
-        // 3. Parsing dan Simpan jika format benar (SM:%d;T:%s;PH:%s;L:%s)
-        if (data != null && data.startsWith("SM:")) {
-            try {
-                String[] parts = data.split(";");
-                SensorReading entity = new SensorReading();
-
-                for (String part : parts) {
-                    String[] pair = part.split(":");
-                    if (pair.length < 2)
-                        continue;
-
-                    String key = pair[0];
-                    String value = pair[1];
-
-                    switch (key) {
-                        case "SM":
-                            entity.setSoilMoisture(Integer.parseInt(value));
-                            break;
-                        case "T":
-                            entity.setTemperature(Double.parseDouble(value));
-                            break;
-                        case "PH":
-                            entity.setPh(Double.parseDouble(value));
-                            break;
-                        case "L":
-                            entity.setLight(Double.parseDouble(value));
-                            break;
-                    }
-                }
-                sensorRepository.save(entity);
-                System.out.println("Data Berhasil Disimpan: " + data);
-            } catch (Exception e) {
-                System.err.println("Gagal parsing data: " + e.getMessage());
-            }
+            globalPort.closePort();
+            logger.info("🔌 Port {} telah ditutup dengan aman.", portName);
         }
     }
 
-    public String getLatestMessage() {
-        String msg = latestMessage;
-        latestMessage = null;
-        return msg;
+    public void triggerManualRead() {
+        logger.info("🔘 Trigger manual dipanggil...");
+        if (globalPort != null && globalPort.isOpen()) {
+            String cmd = "send\n";
+            byte[] command = cmd.getBytes(StandardCharsets.US_ASCII);
+            int written = globalPort.writeBytes(command, command.length);
+            
+            if (written > 0) {
+                logger.info("➡️ Perintah 'send' BERHASIL dikirim ({} bytes). Menunggu balasan...", written);
+            } else {
+                logger.warn("⚠️ Perintah terkirim tapi 0 bytes tertulis. Cek koneksi hardware.");
+            }
+        } else {
+            logger.error("❌ GAGAL TRIGGER: Port tidak terbuka atau null!");
+        }
+    }
+
+    private void processAndSaveToDb(String data) {
+        logger.info("⚙️ Memproses data untuk database...");
+        try {
+            String[] parts = data.split(";");
+            SensorReading entity = new SensorReading();
+            entity.setTimestamp(LocalDateTime.now());
+
+            boolean hasData = false;
+            Long detectedLahanId = null;
+
+            for (String part : parts) {
+                String[] pair = part.split(":");
+                if (pair.length < 2) {
+                    logger.warn("⚠️ Part data tidak valid (skip): {}", part);
+                    continue;
+                }
+
+                String key = pair[0].trim();
+                String value = pair[1].trim();
+                logger.debug("   🔍 Parsing -> {}: {}", key, value);
+
+                try {
+                    switch (key) {
+                        case "ID" -> detectedLahanId = Long.parseLong(value);
+                        case "SM" -> { entity.setSoilMoisture(Integer.parseInt(value)); hasData = true; }
+                        case "T"  -> { entity.setTemperature(Double.parseDouble(value)); hasData = true; }
+                        case "PH" -> { entity.setPh(Double.parseDouble(value)); hasData = true; }
+                        case "L"  -> { entity.setLight(Double.parseDouble(value)); hasData = true; }
+                    }
+                } catch (NumberFormatException e) {
+                    logger.error("❌ Gagal konversi nilai '{}' untuk kunci '{}'", value, key);
+                }
+            }
+
+            if (hasData) {
+                final Long finalId = (detectedLahanId != null) ? detectedLahanId : 1L;
+                logger.info("💾 Mencoba menyimpan ke Lahan ID: {}", finalId);
+                
+                lahanRepository.findById(finalId).ifPresentOrElse(
+                    lahan -> {
+                        entity.setLahan(lahan);
+                        sensorRepository.save(entity);
+                        logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE.");
+                    },
+                    () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", finalId)
+                );
+            } else {
+                logger.warn("⚠️ Data diterima tapi tidak mengandung nilai sensor yang valid.");
+            }
+        } catch (Exception e) {
+            logger.error("❌ ERROR saat parsing/saving: ", e);
+        }
     }
 }
