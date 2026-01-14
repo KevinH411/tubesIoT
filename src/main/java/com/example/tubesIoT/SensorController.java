@@ -60,13 +60,13 @@ public class SensorController {
      * Endpoint ini akan mengirim perintah ke Arduino untuk mengambil data sensor
      */
     @PostMapping("/trigger-read")
-    public ResponseEntity<?> triggerSensorRead() {
+    public ResponseEntity<?> triggerSensorRead(@RequestParam(required = false) Long lahanId) {
         try {
             // Panggil method triggerManualRead dari XBeeReceiver secara manual
-            xbeeReceiver.triggerManualRead();
+            xbeeReceiver.triggerManualRead(lahanId);
             
             return ResponseEntity.ok(Map.of(
-                    "message", "Perintah pembacaan sensor telah dikirim",
+                    "message", "Perintah pembacaan sensor telah dikirim untuk Lahan ID: " + lahanId,
                     "status", "success"
             ));
         } catch (Exception e) {

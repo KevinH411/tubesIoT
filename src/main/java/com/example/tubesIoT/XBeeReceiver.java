@@ -38,6 +38,7 @@ public class XBeeReceiver {
 
     private SerialPort globalPort;
     private final StringBuilder buffer = new StringBuilder();
+    private Long currentTargetLahanId = null;
 
     @PostConstruct
     public void init() {
@@ -121,8 +122,10 @@ public class XBeeReceiver {
         }
     }
 
-    public void triggerManualRead() {
-        logger.info("🔘 Trigger manual dipanggil...");
+    public void triggerManualRead(Long lahanId) {
+        logger.info("🔘 Trigger manual dipanggil untuk Lahan ID: {}...", lahanId);
+        this.currentTargetLahanId = lahanId;
+        
         if (globalPort != null && globalPort.isOpen()) {
             String cmd = "send\n";
             byte[] command = cmd.getBytes(StandardCharsets.US_ASCII);
@@ -173,17 +176,30 @@ public class XBeeReceiver {
             }
 
             if (hasData) {
-                final Long finalId = (detectedLahanId != null) ? detectedLahanId : 1L;
-                logger.info("💾 Mencoba menyimpan ke Lahan ID: {}", finalId);
-                
-                lahanRepository.findById(finalId).ifPresentOrElse(
+                // Prioritas ID: 1. Dari pesan XBee, 2. Dari trigger UI, 3. Default 1L
+                Long finalId = 1L;
+                if (detectedLahanId != null) {
+                    finalId = detectedLahanId;
+                    logger.info("📍 Menggunakan ID dari pesan XBee: {}", finalId);
+                } else if (currentTargetLahanId != null) {
+                    finalId = currentTargetLahanId;
+                    logger.info("📍 Menggunakan ID dari pilihan UI: {}", finalId);
+                } else {
+                    logger.info("📍 Menggunakan ID Default: {}", finalId);
+                }
+
+                final Long targetId = finalId;
+                lahanRepository.findById(targetId).ifPresentOrElse(
                     lahan -> {
                         entity.setLahan(lahan);
                         sensorRepository.save(entity);
-                        logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE.");
+                        logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lahan ID: {}", targetId);
                     },
-                    () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", finalId)
+                    () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", targetId)
                 );
+                
+                // Reset target setelah berhasil simpan agar tidak tertukar di pembacaan berikutnya
+                currentTargetLahanId = null;
             } else {
                 logger.warn("⚠️ Data diterima tapi tidak mengandung nilai sensor yang valid.");
             }
