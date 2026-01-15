@@ -1,5 +1,6 @@
 package com.example.tubesIoT;
 
+import com.example.tubesIoT.DTO.CreateTanahRequest;
 import com.example.tubesIoT.Model.Tanah;
 import com.example.tubesIoT.Model.User;
 import com.example.tubesIoT.Repository.TanahRepository;
@@ -8,9 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/tanah")
@@ -44,5 +43,26 @@ public class TanahController {
         return tanahRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Create tanah
+     */
+    @PostMapping
+    public ResponseEntity<?> createTanah(@RequestBody CreateTanahRequest request) {
+
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Tanah tanah = new Tanah();
+        tanah.setPemilik(request.getPemilik());
+        tanah.setAddress(request.getAddress());
+
+        tanah.getUsers().add(user);
+        user.getTanahList().add(tanah);
+
+        tanahRepository.save(tanah);
+
+        return ResponseEntity.ok(tanah);
     }
 }
