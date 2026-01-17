@@ -17,6 +17,9 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 
 @Component
@@ -40,6 +43,10 @@ public class XBeeReceiver {
     private final StringBuilder buffer = new StringBuilder();
     private Long currentTargetLahanId = null;
 
+    private volatile String lastRequestedTimestamp = null;
+
+    private static final DateTimeFormatter TS_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     @PostConstruct
     public void init() {
         logger.info("====================================================");
@@ -50,11 +57,11 @@ public class XBeeReceiver {
 
         try {
             globalPort = SerialPort.getCommPort(portName);
-            
+
             // Log semua port yang tersedia untuk membantu user jika portName salah
             SerialPort[] availablePorts = SerialPort.getCommPorts();
-            logger.info("📋 Port yang terdeteksi di sistem: {}", 
-                Arrays.stream(availablePorts).map(SerialPort::getSystemPortName).toList());
+            logger.info("📋 Port yang terdeteksi di sistem: {}",
+                    Arrays.stream(availablePorts).map(SerialPort::getSystemPortName).toList());
 
             globalPort.setBaudRate(baudRate);
             globalPort.setNumDataBits(8);
@@ -80,26 +87,29 @@ public class XBeeReceiver {
 
                 @Override
                 public void serialEvent(SerialPortEvent event) {
-                    if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE) return;
+                    if (event.getEventType() != SerialPort.LISTENING_EVENT_DATA_AVAILABLE)
+                        return;
 
                     int bytesAvailable = globalPort.bytesAvailable();
-                    if (bytesAvailable <= 0) return;
+                    if (bytesAvailable <= 0)
+                        return;
 
                     byte[] newData = new byte[bytesAvailable];
                     int numRead = globalPort.readBytes(newData, newData.length);
-                    
+
                     if (numRead > 0) {
                         String rawPart = new String(newData, 0, numRead, StandardCharsets.US_ASCII);
-                        logger.debug("📥 Raw Bytes Masuk ({} bytes): [{}]", numRead, rawPart.replace("\n", "\\n").replace("\r", "\\r"));
-                        
+                        logger.debug("📥 Raw Bytes Masuk ({} bytes): [{}]", numRead,
+                                rawPart.replace("\n", "\\n").replace("\r", "\\r"));
+
                         buffer.append(rawPart);
-                        
+
                         // Proses jika ada newline (pesan lengkap)
                         int newlineIndex;
                         while ((newlineIndex = buffer.indexOf("\n")) != -1) {
                             String fullMessage = buffer.substring(0, newlineIndex).trim();
                             buffer.delete(0, newlineIndex + 1);
-                            
+
                             if (!fullMessage.isEmpty()) {
                                 logger.info("📩 PESAN LENGKAP DITERIMA: '{}'", fullMessage);
                                 processAndSaveToDb(fullMessage);
@@ -125,14 +135,21 @@ public class XBeeReceiver {
     public void triggerManualRead(Long lahanId) {
         logger.info("🔘 Trigger manual dipanggil untuk Lahan ID: {}...", lahanId);
         this.currentTargetLahanId = lahanId;
-        
+
         if (globalPort != null && globalPort.isOpen()) {
-            String cmd = "send\n";
+            // prepare timestamp (server-side authoritative, truncated to seconds)
+            String ts = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).format(TS_FORMATTER);
+            // set lastRequestedTimestamp BEFORE sending so the incoming listener can
+            // compare
+            lastRequestedTimestamp = ts;
+
+            String cmd = "send:" + ts + "\n";
             byte[] command = cmd.getBytes(StandardCharsets.US_ASCII);
             int written = globalPort.writeBytes(command, command.length);
-            
+
             if (written > 0) {
-                logger.info("➡️ Perintah 'send' BERHASIL dikirim ({} bytes). Menunggu balasan...", written);
+                logger.info("➡️ Perintah 'send' dengan TS={} BERHASIL dikirim ({} bytes). Menunggu balasan...", ts,
+                        written);
             } else {
                 logger.warn("⚠️ Perintah terkirim tapi 0 bytes tertulis. Cek koneksi hardware.");
             }
@@ -146,13 +163,14 @@ public class XBeeReceiver {
         try {
             String[] parts = data.split(";");
             SensorReading entity = new SensorReading();
-            entity.setTimestamp(LocalDateTime.now());
 
             boolean hasData = false;
             Long detectedLahanId = null;
+            final String[] parsedTimestampStrHolder = new String[1];
+            final LocalDateTime[] parsedTimestampHolder = new LocalDateTime[1];
 
             for (String part : parts) {
-                String[] pair = part.split(":");
+                String[] pair = part.split(":", 2); // only split at first colon
                 if (pair.length < 2) {
                     logger.warn("⚠️ Part data tidak valid (skip): {}", part);
                     continue;
@@ -163,12 +181,35 @@ public class XBeeReceiver {
                 logger.debug("   🔍 Parsing -> {}: {}", key, value);
 
                 try {
-                    switch (key) {
+                    switch (key.toUpperCase()) {
                         case "ID" -> detectedLahanId = Long.parseLong(value);
-                        case "SM" -> { entity.setSoilMoisture(Integer.parseInt(value)); hasData = true; }
-                        case "T"  -> { entity.setTemperature(Double.parseDouble(value)); hasData = true; }
-                        case "PH" -> { entity.setPh(Double.parseDouble(value)); hasData = true; }
-                        case "L"  -> { entity.setLight(Double.parseDouble(value)); hasData = true; }
+                        case "SM" -> {
+                            entity.setSoilMoisture(Integer.parseInt(value));
+                            hasData = true;
+                        }
+                        case "T" -> {
+                            entity.setTemperature(Double.parseDouble(value));
+                            hasData = true;
+                        }
+                        case "PH" -> {
+                            entity.setPh(Double.parseDouble(value));
+                            hasData = true;
+                        }
+                        case "L" -> {
+                            entity.setLight(Double.parseDouble(value));
+                            hasData = true;
+                        }
+                        case "TS" -> {
+                            parsedTimestampStrHolder[0] = value;
+                            try {
+                                parsedTimestampHolder[0] = LocalDateTime.parse(value, TS_FORMATTER);
+                            } catch (DateTimeParseException ex) {
+                                logger.warn("⚠️ TS dari device tidak bisa diparse: '{}'. Akan gunakan waktu server.",
+                                        value);
+                                parsedTimestampHolder[0] = null;
+                            }
+                        }
+                        default -> logger.debug("   ⚪ Unknown key, skipping: {}", key);
                     }
                 } catch (NumberFormatException e) {
                     logger.error("❌ Gagal konversi nilai '{}' untuk kunci '{}'", value, key);
@@ -190,15 +231,36 @@ public class XBeeReceiver {
 
                 final Long targetId = finalId;
                 lahanRepository.findById(targetId).ifPresentOrElse(
-                    lahan -> {
-                        entity.setLahan(lahan);
-                        sensorRepository.save(entity);
-                        logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lahan ID: {}", targetId);
-                    },
-                    () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", targetId)
-                );
+                        lahan -> {
+                            entity.setLahan(lahan);
+
+                            LocalDateTime toSave;
+                            if (parsedTimestampHolder[0] != null) {
+                                toSave = parsedTimestampHolder[0].truncatedTo(ChronoUnit.SECONDS);
+                            } else {
+                                toSave = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+                            }
+                            entity.setTimestamp(toSave);
+
+                            sensorRepository.save(entity);
+                            logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lahan ID: {} at {}", targetId,
+                                    toSave);
+
+                            // Verification: if we previously requested a timestamp, compare
+                            if (lastRequestedTimestamp != null) {
+                                if (parsedTimestampStrHolder[0] != null
+                                        && lastRequestedTimestamp.equals(parsedTimestampStrHolder[0])) {
+                                    logger.info("🔁 Verifikasi TS: device echoed requested TS successfully: {}",
+                                            parsedTimestampStrHolder[0]);
+                                } else {
+                                    logger.warn("⚠️ Verifikasi TS GAGAL: expected '{}' but device sent '{}'.",
+                                            lastRequestedTimestamp, parsedTimestampStrHolder[0]);
+                                }
+                                lastRequestedTimestamp = null;
+                            }
+                        },
+                        () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", targetId));
                 
-                // Reset target setelah berhasil simpan agar tidak tertukar di pembacaan berikutnya
                 currentTargetLahanId = null;
             } else {
                 logger.warn("⚠️ Data diterima tapi tidak mengandung nilai sensor yang valid.");
