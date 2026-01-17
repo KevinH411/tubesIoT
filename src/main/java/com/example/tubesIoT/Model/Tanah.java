@@ -1,20 +1,30 @@
 package com.example.tubesIoT.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 @Entity
 @Table(name = "tanah")
-@AllArgsConstructor
+@Getter
+@Setter
 @NoArgsConstructor
-@Data
+@AllArgsConstructor
+@ToString(exclude = {"lahanList", "users"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Tanah {
 
+    @EqualsAndHashCode.Include
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_tanah")
@@ -26,9 +36,11 @@ public class Tanah {
     @Column(nullable = false)
     private String address;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "tanah", cascade = CascadeType.ALL)
-    private List<Lahan> lahanList;
+    private List<Lahan> lahanList = new ArrayList<>();
 
+    @JsonIgnore
     @ManyToMany(mappedBy = "tanahList")
-    private Set<User> users;
+    private Set<User> users = new HashSet<>();
 }

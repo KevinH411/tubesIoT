@@ -1,9 +1,11 @@
 package com.example.tubesIoT.Model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@ToString(exclude = {"tanah", "sensorReadings"})
 public class Lahan {
 
     @Id
@@ -20,6 +23,7 @@ public class Lahan {
     @Column(name = "id_lahan")
     private Long idLahan;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "id_tanah", nullable = false)
     private Tanah tanah;
@@ -30,6 +34,6 @@ public class Lahan {
     @Column(nullable = false)
     private String note;
 
-    @OneToMany(mappedBy = "lahan", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<SensorReading> sensorReadings;
 }
