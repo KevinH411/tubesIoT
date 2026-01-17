@@ -35,5 +35,6 @@ public class Lahan {
     private String note;
 
     @JsonIgnore
+    @OneToMany(mappedBy = "lahan", cascade = CascadeType.ALL)
     private List<SensorReading> sensorReadings;
 }
