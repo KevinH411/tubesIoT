@@ -20,7 +20,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString(exclude = {"lahanList", "users"})
+@ToString(exclude = {"lokasiList", "users"})
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Tanah {
 
@@ -38,7 +38,7 @@ public class Tanah {
 
     @JsonIgnore
     @OneToMany(mappedBy = "tanah", cascade = CascadeType.ALL)
-    private List<Lahan> lahanList = new ArrayList<>();
+    private List<Lokasi> lokasiList = new ArrayList<>();
 
     @JsonIgnore
     @ManyToMany(mappedBy = "tanahList")

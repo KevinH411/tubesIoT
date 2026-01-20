@@ -1,7 +1,7 @@
 package com.example.tubesIoT;
 
 import com.example.tubesIoT.Model.SensorReading;
-import com.example.tubesIoT.Repository.LahanRepository;
+import com.example.tubesIoT.Repository.LokasiRepository;
 import com.example.tubesIoT.Repository.SensorReadingRepository;
 import com.fazecast.jSerialComm.SerialPort;
 import com.fazecast.jSerialComm.SerialPortDataListener;
@@ -31,7 +31,7 @@ public class XBeeReceiver {
     private SensorReadingRepository sensorRepository;
 
     @Autowired
-    private LahanRepository lahanRepository;
+    private LokasiRepository lokasiRepository;
 
     @Value("${xbee.port}")
     private String portName;
@@ -41,7 +41,7 @@ public class XBeeReceiver {
 
     private SerialPort globalPort;
     private final StringBuilder buffer = new StringBuilder();
-    private Long currentTargetLahanId = null;
+    private Long currentTargetLokasiId = null;
 
     private volatile String lastRequestedTimestamp = null;
 
@@ -132,9 +132,9 @@ public class XBeeReceiver {
         }
     }
 
-    public void triggerManualRead(Long lahanId) {
-        logger.info("🔘 Trigger manual dipanggil untuk Lahan ID: {}...", lahanId);
-        this.currentTargetLahanId = lahanId;
+    public void triggerManualRead(Long lokasiId) {
+        logger.info("🔘 Trigger manual dipanggil untuk Lokasi ID: {}...", lokasiId);
+        this.currentTargetLokasiId = lokasiId;
 
         if (globalPort != null && globalPort.isOpen()) {
             // prepare timestamp (server-side authoritative, truncated to seconds)
@@ -165,7 +165,7 @@ public class XBeeReceiver {
             SensorReading entity = new SensorReading();
 
             boolean hasData = false;
-            Long detectedLahanId = null;
+            Long detectedLokasiId = null;
             final String[] parsedTimestampStrHolder = new String[1];
             final LocalDateTime[] parsedTimestampHolder = new LocalDateTime[1];
 
@@ -182,7 +182,7 @@ public class XBeeReceiver {
 
                 try {
                     switch (key.toUpperCase()) {
-                        case "ID" -> detectedLahanId = Long.parseLong(value);
+                        case "ID" -> detectedLokasiId = Long.parseLong(value);
                         case "SM" -> {
                             entity.setSoilMoisture(Integer.parseInt(value));
                             hasData = true;
@@ -219,20 +219,20 @@ public class XBeeReceiver {
             if (hasData) {
                 // Prioritas ID: 1. Dari pesan XBee, 2. Dari trigger UI, 3. Default 1L
                 Long finalId = 1L;
-                if (detectedLahanId != null) {
-                    finalId = detectedLahanId;
+                if (detectedLokasiId != null) {
+                    finalId = detectedLokasiId;
                     logger.info("📍 Menggunakan ID dari pesan XBee: {}", finalId);
-                } else if (currentTargetLahanId != null) {
-                    finalId = currentTargetLahanId;
+                } else if (currentTargetLokasiId != null) {
+                    finalId = currentTargetLokasiId;
                     logger.info("📍 Menggunakan ID dari pilihan UI: {}", finalId);
                 } else {
                     logger.info("📍 Menggunakan ID Default: {}", finalId);
                 }
 
                 final Long targetId = finalId;
-                lahanRepository.findById(targetId).ifPresentOrElse(
-                        lahan -> {
-                            entity.setLahan(lahan);
+                lokasiRepository.findById(targetId).ifPresentOrElse(
+                        lokasi -> {
+                            entity.setLokasi(lokasi);
 
                             LocalDateTime toSave;
                             if (parsedTimestampHolder[0] != null) {
@@ -243,7 +243,7 @@ public class XBeeReceiver {
                             entity.setTimestamp(toSave);
 
                             sensorRepository.save(entity);
-                            logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lahan ID: {} at {}", targetId,
+                            logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lokasi ID: {} at {}", targetId,
                                     toSave);
 
                             // Verification: if we previously requested a timestamp, compare
@@ -259,9 +259,9 @@ public class XBeeReceiver {
                                 lastRequestedTimestamp = null;
                             }
                         },
-                        () -> logger.error("❌ GAGAL SIMPAN: Lahan ID {} tidak ada di database!", targetId));
-                
-                currentTargetLahanId = null;
+                        () -> logger.error("❌ GAGAL SIMPAN: Lokasi ID {} tidak ada di database!", targetId));
+
+                currentTargetLokasiId = null;
             } else {
                 logger.warn("⚠️ Data diterima tapi tidak mengandung nilai sensor yang valid.");
             }

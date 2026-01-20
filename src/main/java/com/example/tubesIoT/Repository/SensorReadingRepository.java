@@ -9,8 +9,8 @@ import java.util.List;
 @Repository
 public interface SensorReadingRepository extends JpaRepository<SensorReading, Long> {
     /**
-     * Mencari riwayat pembacaan sensor berdasarkan ID Lahan.
+     * Mencari riwayat pembacaan sensor berdasarkan ID Lokasi.
      * Spring Data JPA akan secara otomatis menerjemahkan ini menjadi query filter.
      */
-    List<SensorReading> findByLahan_IdLahan(Long idLahan);
+    List<SensorReading> findByLokasi_IdLokasi(Long idLokasi);
 }

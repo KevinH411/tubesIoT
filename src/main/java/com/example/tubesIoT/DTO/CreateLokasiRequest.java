@@ -1,6 +1,6 @@
 package com.example.tubesIoT.DTO;
 
-public class CreateLahanRequest {
+public class CreateLokasiRequest {
     private Long idTanah;
     private String note;
 

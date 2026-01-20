@@ -4,23 +4,23 @@ import '../styles/Dashboard.css'
 
 function Dashboard({ user, onLogout }) {
     const [tanahList, setTanahList] = useState([])
-    const [lahanList, setLahanList] = useState([])
+    const [lokasiList, setLokasiList] = useState([])
     const [sensorData, setSensorData] = useState([])
     const [selectedTanah, setSelectedTanah] = useState('')
-    const [selectedLahan, setSelectedLahan] = useState('')
+    const [selectedLokasi, setSelectedLokasi] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
     const [dataLoaded, setDataLoaded] = useState(false)
 
     // New UI states for modals / create forms
     const [showCreateTanah, setShowCreateTanah] = useState(false)
-    const [showCreateLahan, setShowCreateLahan] = useState(false)
+    const [showCreateLokasi, setShowCreateLokasi] = useState(false)
 
     const [newTanahPemilik, setNewTanahPemilik] = useState('')
     const [newTanahAddress, setNewTanahAddress] = useState('')
 
-    const [newLahanTanahId, setNewLahanTanahId] = useState('')
-    const [newLahanNote, setNewLahanNote] = useState('')
+    const [newLokasiTanahId, setNewLokasiTanahId] = useState('')
+    const [newLokasiNote, setNewLokasiNote] = useState('')
     const [creating, setCreating] = useState(false)
 
     // Fetch daftar tanah saat komponen dimuat atau user berubah
@@ -55,34 +55,34 @@ function Dashboard({ user, onLogout }) {
         }
     }
 
-    // Fetch lahan ketika tanah berubah
+    // Fetch lokasi ketika tanah berubah
     useEffect(() => {
         if (selectedTanah) {
-            fetchLahanByTanah(selectedTanah)
+            fetchLokasiByTanah(selectedTanah)
         } else {
-            setLahanList([])
-            setSelectedLahan('')
+            setLokasiList([])
+            setSelectedLokasi('')
         }
     }, [selectedTanah])
 
-    const fetchLahanByTanah = async (tanahId) => {
+    const fetchLokasiByTanah = async (tanahId) => {
         try {
             const response = await axios.get(
-                `http://localhost:8080/api/lahan/by-tanah/${tanahId}`
+                `http://localhost:8080/api/lokasi/by-tanah/${tanahId}`
             )
             const data = Array.isArray(response.data) ? response.data : []
-            setLahanList(data)
-            setSelectedLahan('')
+            setLokasiList(data)
+            setSelectedLokasi('')
         } catch (err) {
-            console.error('Error fetching lahan:', err)
-            setError('Gagal mengambil data lahan')
-            setLahanList([])
+            console.error('Error fetching lokasi:', err)
+            setError('Gagal mengambil data lokasi')
+            setLokasiList([])
         }
     }
 
     const handleOkClick = async () => {
-        if (!selectedLahan) {
-            setError('Silakan pilih lahan terlebih dahulu')
+        if (!selectedLokasi) {
+            setError('Silakan pilih lokasi terlebih dahulu')
             return
         }
 
@@ -92,7 +92,7 @@ function Dashboard({ user, onLogout }) {
 
         try {
             const response = await axios.get(
-                `http://localhost:8080/api/sensors/history/${selectedLahan}`
+                `http://localhost:8080/api/sensors/history/${selectedLokasi}`
             )
             const data =
                 response.data.data ||
@@ -113,13 +113,13 @@ function Dashboard({ user, onLogout }) {
         try {
             setLoading(true)
             await axios.post(
-                `http://localhost:8080/api/sensors/trigger-read?lahanId=${selectedLahan}`
+                `http://localhost:8080/api/sensors/trigger-read?lokasiId=${selectedLokasi}`
             )
             alert('Perintah pembacaan sensor telah dikirim')
 
             // Refresh data setelah beberapa detik
             setTimeout(() => {
-                if (selectedLahan) {
+                if (selectedLokasi) {
                     handleOkClick()
                 }
             }, 2000)
@@ -167,40 +167,40 @@ function Dashboard({ user, onLogout }) {
         }
     }
 
-    // ---------- Create Lahan ----------
-    const openCreateLahan = () => {
+    // ---------- Create Lokasi ----------
+    const openCreateLokasi = () => {
         // default parent tanah = current selectedTanah or first in list
-        setNewLahanTanahId(selectedTanah || String(tanahList[0]?.idTanah || tanahList[0]?.id_tanah || ''))
-        setNewLahanNote('')
-        setShowCreateLahan(true)
+        setNewLokasiTanahId(selectedTanah || String(tanahList[0]?.idTanah || tanahList[0]?.id_tanah || ''))
+        setNewLokasiNote('')
+        setShowCreateLokasi(true)
     }
-    const closeCreateLahan = () => setShowCreateLahan(false)
+    const closeCreateLokasi = () => setShowCreateLokasi(false)
 
-    const submitCreateLahan = async (e) => {
+    const submitCreateLokasi = async (e) => {
         e.preventDefault()
-        if (!newLahanTanahId || !newLahanNote.trim()) {
-            alert('Pilih Tanah dan isi Note untuk lahan')
+        if (!newLokasiTanahId || !newLokasiNote.trim()) {
+            alert('Pilih Tanah dan isi Note untuk lokasi')
             return
         }
         try {
             setCreating(true)
-            const payload = { idTanah: Number(newLahanTanahId), note: newLahanNote.trim() }
-            const response = await axios.post('http://localhost:8080/api/lahan', payload)
+            const payload = { idTanah: Number(newLokasiTanahId), note: newLokasiNote.trim() }
+            const response = await axios.post('http://localhost:8080/api/lokasi', payload)
             const created = response.data || {}
-            alert('Lahan berhasil dibuat')
-            closeCreateLahan()
-            const parentId = Number(newLahanTanahId)
+            alert('Lokasi berhasil dibuat')
+            closeCreateLokasi()
+            const parentId = Number(newLokasiTanahId)
             if (parentId) {
                 setSelectedTanah(String(parentId))
-                await fetchLahanByTanah(parentId)
+                await fetchLokasiByTanah(parentId)
             }
-            const newLahanId = created.idLahan || created.id_lahan || null
-            if (newLahanId) {
-                setSelectedLahan(String(newLahanId))
+            const newLokasiId = created.idLokasi || created.id_lokasi || null
+            if (newLokasiId) {
+                setSelectedLokasi(String(newLokasiId))
             }
         } catch (err) {
-            console.error('Error creating lahan:', err)
-            alert('Gagal membuat lahan')
+            console.error('Error creating lokasi:', err)
+            alert('Gagal membuat lokasi')
         } finally {
             setCreating(false)
         }
@@ -225,7 +225,7 @@ function Dashboard({ user, onLogout }) {
 
             <main className="dashboard-content">
                 <div className="filter-section">
-                    <h2>Pilih Data Lahan</h2>
+                    <h2>Pilih Data Lokasi</h2>
 
                     {error && <div className="error-message">{error}</div>}
 
@@ -249,26 +249,26 @@ function Dashboard({ user, onLogout }) {
                         </div>
 
                         <div className="filter-group">
-                            <label htmlFor="lahan-select">Lahan</label>
+                            <label htmlFor="lokasi-select">Lokasi</label>
                             <select
-                                id="lahan-select"
-                                value={selectedLahan}
-                                onChange={(e) => setSelectedLahan(e.target.value)}
+                                id="lokasi-select"
+                                value={selectedLokasi}
+                                onChange={(e) => setSelectedLokasi(e.target.value)}
                                 disabled={!selectedTanah || loading}
                             >
-                                <option value="">-- Pilih Lahan --</option>
-                                {Array.isArray(lahanList) &&
-                                    lahanList.map((lahan) => (
-                                        <option key={lahan.idLahan || lahan.id_lahan} value={lahan.idLahan || lahan.id_lahan}>
-                                            {lahan.note}
+                                <option value="">-- Pilih Lokasi --</option>
+                                {Array.isArray(lokasiList) &&
+                                    lokasiList.map((lokasi) => (
+                                        <option key={lokasi.idLokasi || lokasi.id_lokasi} value={lokasi.idLokasi || lokasi.id_lokasi}>
+                                            {lokasi.note}
                                         </option>
                                     ))}
                             </select>
                         </div>
 
                         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                            <button className="trigger-btn" onClick={openCreateLahan} disabled={loading || !selectedTanah}>
-                                {loading ? 'Memproses...' : '+ Buat Lahan'}
+                            <button className="trigger-btn" onClick={openCreateLokasi} disabled={loading || !selectedTanah}>
+                                {loading ? 'Memproses...' : '+ Buat Lokasi'}
                             </button>
 
                             <button className="trigger-btn" onClick={openCreateTanah} disabled={loading}>
@@ -276,7 +276,7 @@ function Dashboard({ user, onLogout }) {
                             </button>
                         </div>
 
-                        <button className="ok-btn" onClick={handleOkClick} disabled={!selectedLahan || loading}>
+                        <button className="ok-btn" onClick={handleOkClick} disabled={!selectedLokasi || loading}>
                             {loading ? 'Memproses...' : 'OK'}
                         </button>
                     </div>
@@ -296,7 +296,7 @@ function Dashboard({ user, onLogout }) {
 
                         {!Array.isArray(sensorData) || sensorData.length === 0 ? (
                             <div className="no-data-message">
-                                <p>Tidak ada data sensor untuk lahan ini</p>
+                                <p>Tidak ada data sensor untuk lokasi ini</p>
                             </div>
                         ) : (
                             <div className="table-container">
@@ -359,17 +359,17 @@ function Dashboard({ user, onLogout }) {
                 </div>
             )}
 
-            {/* Create Lahan Modal */}
-            {showCreateLahan && (
+            {/* Create Lokasi Modal */}
+            {showCreateLokasi && (
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal">
                         <div className="modal-header">
-                            <h3>Buat Lahan Baru</h3>
+                            <h3>Buat Lokasi Baru</h3>
                         </div>
-                        <form className="modal-body" onSubmit={submitCreateLahan}>
+                        <form className="modal-body" onSubmit={submitCreateLokasi}>
                             <label>
                                 Pilih Tanah
-                                <select value={newLahanTanahId} onChange={(e) => setNewLahanTanahId(e.target.value)}>
+                                <select value={newLokasiTanahId} onChange={(e) => setNewLokasiTanahId(e.target.value)}>
                                     <option value="">-- Pilih Tanah --</option>
                                     {tanahList.map((t) => (
                                         <option key={t.idTanah || t.id_tanah} value={t.idTanah || t.id_tanah}>
@@ -381,15 +381,15 @@ function Dashboard({ user, onLogout }) {
 
                             <label>
                                 Note
-                                <input value={newLahanNote} onChange={(e) => setNewLahanNote(e.target.value)} />
+                                <input value={newLokasiNote} onChange={(e) => setNewLokasiNote(e.target.value)} />
                             </label>
 
                             <div className="modal-footer">
-                                <button type="button" className="btn" onClick={closeCreateLahan} disabled={creating}>
+                                <button type="button" className="btn" onClick={closeCreateLokasi} disabled={creating}>
                                     Batal
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={creating}>
-                                    {creating ? 'Membuat...' : 'Buat Lahan'}
+                                    {creating ? 'Membuat...' : 'Buat Lokasi'}
                                 </button>
                             </div>
                         </form>

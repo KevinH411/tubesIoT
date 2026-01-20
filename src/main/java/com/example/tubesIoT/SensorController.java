@@ -30,11 +30,11 @@ public class SensorController {
     }
 
     /**
-     * Get riwayat sensor berdasarkan ID Lahan dengan limit 10 entri
+     * Get riwayat sensor berdasarkan ID Lokasi dengan limit 10 entri
      */
-    @GetMapping("/history/{lahanId}")
-    public ResponseEntity<?> getHistory(@PathVariable Long lahanId) {
-        List<SensorReading> readings = sensorRepository.findByLahan_IdLahan(lahanId);
+    @GetMapping("/history/{lokasiId}")
+    public ResponseEntity<?> getHistory(@PathVariable Long lokasiId) {
+        List<SensorReading> readings = sensorRepository.findByLokasi_IdLokasi(lokasiId);
         
         // Batasi hanya 10 entri terbaru
         List<SensorReading> limitedReadings = readings.stream()
@@ -45,7 +45,7 @@ public class SensorController {
         if (limitedReadings.isEmpty()) {
             return ResponseEntity.ok(Map.of(
                     "data", limitedReadings,
-                    "message", "Tidak ada data sensor untuk lahan ini"
+                    "message", "Tidak ada data sensor untuk lokasi ini"
             ));
         }
 
@@ -60,13 +60,13 @@ public class SensorController {
      * Endpoint ini akan mengirim perintah ke Arduino untuk mengambil data sensor
      */
     @PostMapping("/trigger-read")
-    public ResponseEntity<?> triggerSensorRead(@RequestParam(required = false) Long lahanId) {
+    public ResponseEntity<?> triggerSensorRead(@RequestParam(required = false) Long lokasiId) {
         try {
             // Panggil method triggerManualRead dari XBeeReceiver secara manual
-            xbeeReceiver.triggerManualRead(lahanId);
-            
+            xbeeReceiver.triggerManualRead(lokasiId);
+
             return ResponseEntity.ok(Map.of(
-                    "message", "Perintah pembacaan sensor telah dikirim untuk Lahan ID: " + lahanId,
+                    "message", "Perintah pembacaan sensor telah dikirim untuk Lokasi ID: " + lokasiId,
                     "status", "success"
             ));
         } catch (Exception e) {

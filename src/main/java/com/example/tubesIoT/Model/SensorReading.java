@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@ToString(exclude = "lahan")
+@ToString(exclude = "lokasi")
 public class SensorReading {
 
     @Id
@@ -23,8 +23,8 @@ public class SensorReading {
 
     @JsonIgnore
     @ManyToOne
-    @JoinColumn(name = "id_lahan", nullable = false)
-    private Lahan lahan;
+    @JoinColumn(name = "id_lokasi", nullable = false)
+    private Lokasi lokasi;
 
     @Column(nullable = false)
     private Integer soilMoisture;

@@ -3,7 +3,7 @@
 -- =========================
 DROP TABLE IF EXISTS sensor_readings CASCADE;
 DROP TABLE IF EXISTS akses_user CASCADE;
-DROP TABLE IF EXISTS lahan CASCADE;
+DROP TABLE IF EXISTS lokasi CASCADE;
 DROP TABLE IF EXISTS tanah CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -27,15 +27,15 @@ CREATE TABLE tanah (
 );
 
 -- =========================
--- LAHAN
+-- LOKASI
 -- =========================
-CREATE TABLE lahan (
-    id_lahan BIGSERIAL PRIMARY KEY,
+CREATE TABLE lokasi (
+    id_lokasi BIGSERIAL PRIMARY KEY,
     id_tanah BIGINT NOT NULL,
     last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     note VARCHAR(255) NOT NULL,
 
-    CONSTRAINT fk_lahan_tanah
+    CONSTRAINT fk_lokasi_tanah
         FOREIGN KEY (id_tanah)
         REFERENCES tanah(id_tanah)
         ON DELETE CASCADE
@@ -68,16 +68,16 @@ CREATE TABLE akses_user (
 -- =========================
 CREATE TABLE sensor_readings (
     id BIGSERIAL PRIMARY KEY,
-    id_lahan BIGINT NOT NULL,
+    id_lokasi BIGINT NOT NULL,
     soil_moisture INTEGER NOT NULL,
     temperature DOUBLE PRECISION NOT NULL,
     ph DOUBLE PRECISION NOT NULL,
     light DOUBLE PRECISION NOT NULL,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_sensor_lahan
-        FOREIGN KEY (id_lahan)
-        REFERENCES lahan(id_lahan)
+    CONSTRAINT fk_sensor_lokasi
+        FOREIGN KEY (id_lokasi)
+        REFERENCES lokasi(id_lokasi)
         ON DELETE CASCADE
 );
 
@@ -96,8 +96,8 @@ INSERT INTO tanah (pemilik, address) VALUES
 ('Kevin Halim', 'Jl. Merdeka No. 10'),
 ('Budi Santoso', 'Jl. Sudirman No. 22');
 
--- LAHAN
-INSERT INTO lahan (id_tanah, note) VALUES
+-- LOKASI
+INSERT INTO lokasi (id_tanah, note) VALUES
 (1, 'Lahan cabai belakang rumah'),
 (1, 'Lahan tomat samping rumah'),
 (2, 'Lahan padi utama');
@@ -110,7 +110,7 @@ INSERT INTO akses_user (id_user, id_tanah) VALUES
 
 -- SENSOR READINGS
 INSERT INTO sensor_readings
-(id_lahan, soil_moisture, temperature, ph, light)
+(id_lokasi, soil_moisture, temperature, ph, light)
 VALUES
 (1, 45, 28.5, 6.5, 1200),
 (1, 47, 29.0, 6.6, 1300),

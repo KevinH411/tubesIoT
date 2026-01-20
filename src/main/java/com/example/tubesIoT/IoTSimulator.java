@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.example.tubesIoT.Model.Lahan;
+import com.example.tubesIoT.Model.Lokasi;
 import com.example.tubesIoT.Model.SensorReading;
 import com.example.tubesIoT.Repository.SensorReadingRepository;
 
@@ -20,23 +20,23 @@ public class IoTSimulator {
 
     private final Random random = new Random();
 
-    // Simulasi pengiriman data dari 3 lahan setiap 5 detik
+    // Simulasi pengiriman data dari 3 lokasi setiap 5 detik
     @Scheduled(fixedDelay = 5000)
     public void simulateSensorData() {
         System.out.println("Simulating IoT Data Transmission...");
         
-        simulateForLahan(1L);
-        simulateForLahan(2L);
-        simulateForLahan(3L);
+        simulateForLokasi(1L);
+        simulateForLokasi(2L);
+        simulateForLokasi(3L);
         
         System.out.println("Simulation complete. Data saved to H2 Database.");
     }
 
-    private void simulateForLahan(Long lahanId) {
+    private void simulateForLokasi(Long lokasiId) {
         SensorReading data = new SensorReading();
-        Lahan lahan = new Lahan();
-        lahan.setIdLahan(lahanId);
-        data.setLahan(lahan);
+        Lokasi lokasi = new Lokasi();
+        lokasi.setIdLokasi(lokasiId);
+        data.setLokasi(lokasi);
         
         // Generate data acak yang masuk akal
         data.setSoilMoisture(20 + random.nextInt(60)); // 20% - 80%

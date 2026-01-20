@@ -11,17 +11,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "lahan")
+@Table(name = "lokasi")
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
 @ToString(exclude = {"tanah", "sensorReadings"})
-public class Lahan {
+public class Lokasi {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id_lahan")
-    private Long idLahan;
+    @Column(name = "id_lokasi")
+    private Long idLokasi;
 
     @JsonIgnore
     @ManyToOne
@@ -35,6 +35,6 @@ public class Lahan {
     private String note;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "lahan", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "lokasi", cascade = CascadeType.ALL)
     private List<SensorReading> sensorReadings;
 }
