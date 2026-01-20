@@ -50,9 +50,9 @@ public class XBeeReceiver {
     @PostConstruct
     public void init() {
         logger.info("====================================================");
-        logger.info("🔍 MEMULAI DEBUGGING XBEE");
-        logger.info("📍 Port Target: {}", portName);
-        logger.info("🚀 Baud Rate: {}", baudRate);
+        logger.info("MEMULAI DEBUGGING XBEE");
+        logger.info("Port Target: {}", portName);
+        logger.info("Baud Rate: {}", baudRate);
         logger.info("====================================================");
 
         try {
@@ -70,14 +70,14 @@ public class XBeeReceiver {
             globalPort.setComPortTimeouts(SerialPort.TIMEOUT_READ_SEMI_BLOCKING, 2000, 0);
 
             if (!globalPort.openPort()) {
-                logger.error("❌ GAGAL MEMBUKA PORT: {}. Kemungkinan penyebab:", portName);
+                logger.error("GAGAL MEMBUKA PORT: {}. Kemungkinan penyebab:", portName);
                 logger.error("   1. Port sedang digunakan aplikasi lain (Serial Monitor/Kode Tes).");
                 logger.error("   2. Nama port salah (Cek daftar port di atas).");
                 logger.error("   3. Kabel USB/XBee tidak terhubung dengan baik.");
                 return;
             }
 
-            logger.info("✅ PORT BERHASIL DIBUKA: {}", portName);
+            logger.info("PORT BERHASIL DIBUKA: {}", portName);
 
             globalPort.addDataListener(new SerialPortDataListener() {
                 @Override
@@ -99,7 +99,7 @@ public class XBeeReceiver {
 
                     if (numRead > 0) {
                         String rawPart = new String(newData, 0, numRead, StandardCharsets.US_ASCII);
-                        logger.debug("📥 Raw Bytes Masuk ({} bytes): [{}]", numRead,
+                        logger.debug("Raw Bytes Masuk ({} bytes): [{}]", numRead,
                                 rawPart.replace("\n", "\\n").replace("\r", "\\r"));
 
                         buffer.append(rawPart);
@@ -111,7 +111,7 @@ public class XBeeReceiver {
                             buffer.delete(0, newlineIndex + 1);
 
                             if (!fullMessage.isEmpty()) {
-                                logger.info("📩 PESAN LENGKAP DITERIMA: '{}'", fullMessage);
+                                logger.info("PESAN LENGKAP DITERIMA: '{}'", fullMessage);
                                 processAndSaveToDb(fullMessage);
                             }
                         }
@@ -120,7 +120,7 @@ public class XBeeReceiver {
             });
 
         } catch (Exception e) {
-            logger.error("💥 CRITICAL ERROR saat inisialisasi: ", e);
+            logger.error("CRITICAL ERROR saat inisialisasi: ", e);
         }
     }
 
@@ -128,12 +128,12 @@ public class XBeeReceiver {
     public void cleanup() {
         if (globalPort != null && globalPort.isOpen()) {
             globalPort.closePort();
-            logger.info("🔌 Port {} telah ditutup dengan aman.", portName);
+            logger.info("Port {} telah ditutup dengan aman.", portName);
         }
     }
 
     public void triggerManualRead(Long lokasiId) {
-        logger.info("🔘 Trigger manual dipanggil untuk Lokasi ID: {}...", lokasiId);
+        logger.info("Trigger manual dipanggil untuk Lokasi ID: {}...", lokasiId);
         this.currentTargetLokasiId = lokasiId;
 
         if (globalPort != null && globalPort.isOpen()) {
@@ -148,18 +148,18 @@ public class XBeeReceiver {
             int written = globalPort.writeBytes(command, command.length);
 
             if (written > 0) {
-                logger.info("➡️ Perintah 'send' dengan TS={} BERHASIL dikirim ({} bytes). Menunggu balasan...", ts,
+                logger.info("Perintah 'send' dengan TS={} BERHASIL dikirim ({} bytes). Menunggu balasan...", ts,
                         written);
             } else {
-                logger.warn("⚠️ Perintah terkirim tapi 0 bytes tertulis. Cek koneksi hardware.");
+                logger.warn("Perintah terkirim tapi 0 bytes tertulis. Cek koneksi hardware.");
             }
         } else {
-            logger.error("❌ GAGAL TRIGGER: Port tidak terbuka atau null!");
+            logger.error("GAGAL TRIGGER: Port tidak terbuka atau null!");
         }
     }
 
     private void processAndSaveToDb(String data) {
-        logger.info("⚙️ Memproses data untuk database...");
+        logger.info("Memproses data untuk database...");
         try {
             String[] parts = data.split(";");
             SensorReading entity = new SensorReading();
@@ -172,13 +172,13 @@ public class XBeeReceiver {
             for (String part : parts) {
                 String[] pair = part.split(":", 2); // only split at first colon
                 if (pair.length < 2) {
-                    logger.warn("⚠️ Part data tidak valid (skip): {}", part);
+                    logger.warn("Part data tidak valid (skip): {}", part);
                     continue;
                 }
 
                 String key = pair[0].trim();
                 String value = pair[1].trim();
-                logger.debug("   🔍 Parsing -> {}: {}", key, value);
+                logger.debug("   Parsing -> {}: {}", key, value);
 
                 try {
                     switch (key.toUpperCase()) {
@@ -204,15 +204,15 @@ public class XBeeReceiver {
                             try {
                                 parsedTimestampHolder[0] = LocalDateTime.parse(value, TS_FORMATTER);
                             } catch (DateTimeParseException ex) {
-                                logger.warn("⚠️ TS dari device tidak bisa diparse: '{}'. Akan gunakan waktu server.",
+                                logger.warn("TS dari device tidak bisa diparse: '{}'. Akan gunakan waktu server.",
                                         value);
                                 parsedTimestampHolder[0] = null;
                             }
                         }
-                        default -> logger.debug("   ⚪ Unknown key, skipping: {}", key);
+                        default -> logger.debug("   Unknown key, skipping: {}", key);
                     }
                 } catch (NumberFormatException e) {
-                    logger.error("❌ Gagal konversi nilai '{}' untuk kunci '{}'", value, key);
+                    logger.error("Gagal konversi nilai '{}' untuk kunci '{}'", value, key);
                 }
             }
 
@@ -221,12 +221,12 @@ public class XBeeReceiver {
                 Long finalId = 1L;
                 if (detectedLokasiId != null) {
                     finalId = detectedLokasiId;
-                    logger.info("📍 Menggunakan ID dari pesan XBee: {}", finalId);
+                    logger.info("Menggunakan ID dari pesan XBee: {}", finalId);
                 } else if (currentTargetLokasiId != null) {
                     finalId = currentTargetLokasiId;
-                    logger.info("📍 Menggunakan ID dari pilihan UI: {}", finalId);
+                    logger.info("Menggunakan ID dari pilihan UI: {}", finalId);
                 } else {
-                    logger.info("📍 Menggunakan ID Default: {}", finalId);
+                    logger.info("Menggunakan ID Default: {}", finalId);
                 }
 
                 final Long targetId = finalId;
@@ -243,30 +243,30 @@ public class XBeeReceiver {
                             entity.setTimestamp(toSave);
 
                             sensorRepository.save(entity);
-                            logger.info("✅ DATA BERHASIL DISIMPAN KE DATABASE untuk Lokasi ID: {} at {}", targetId,
+                            logger.info("DATA BERHASIL DISIMPAN KE DATABASE untuk Lokasi ID: {} at {}", targetId,
                                     toSave);
 
                             // Verification: if we previously requested a timestamp, compare
                             if (lastRequestedTimestamp != null) {
                                 if (parsedTimestampStrHolder[0] != null
                                         && lastRequestedTimestamp.equals(parsedTimestampStrHolder[0])) {
-                                    logger.info("🔁 Verifikasi TS: device echoed requested TS successfully: {}",
+                                    logger.info("Verifikasi TS: device echoed requested TS successfully: {}",
                                             parsedTimestampStrHolder[0]);
                                 } else {
-                                    logger.warn("⚠️ Verifikasi TS GAGAL: expected '{}' but device sent '{}'.",
+                                    logger.warn("Verifikasi TS GAGAL: expected '{}' but device sent '{}'.",
                                             lastRequestedTimestamp, parsedTimestampStrHolder[0]);
                                 }
                                 lastRequestedTimestamp = null;
                             }
                         },
-                        () -> logger.error("❌ GAGAL SIMPAN: Lokasi ID {} tidak ada di database!", targetId));
+                        () -> logger.error("GAGAL SIMPAN: Lokasi ID {} tidak ada di database!", targetId));
 
                 currentTargetLokasiId = null;
             } else {
-                logger.warn("⚠️ Data diterima tapi tidak mengandung nilai sensor yang valid.");
+                logger.warn("Data diterima tapi tidak mengandung nilai sensor yang valid.");
             }
         } catch (Exception e) {
-            logger.error("❌ ERROR saat parsing/saving: ", e);
+            logger.error("ERROR saat parsing/saving: ", e);
         }
     }
 }

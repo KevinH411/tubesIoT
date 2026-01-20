@@ -12,7 +12,6 @@ function Dashboard({ user, onLogout }) {
     const [error, setError] = useState('')
     const [dataLoaded, setDataLoaded] = useState(false)
 
-    // New UI states for modals / create forms
     const [showCreateTanah, setShowCreateTanah] = useState(false)
     const [showCreateLokasi, setShowCreateLokasi] = useState(false)
 
@@ -330,7 +329,7 @@ function Dashboard({ user, onLogout }) {
                 )}
             </main>
 
-            {/* Create Tanah Modal */}
+            {/* Create Tanah */}
             {showCreateTanah && (
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal">
@@ -359,7 +358,7 @@ function Dashboard({ user, onLogout }) {
                 </div>
             )}
 
-            {/* Create Lokasi Modal */}
+            {/* Create Lokasi */}
             {showCreateLokasi && (
                 <div className="modal-overlay" role="dialog" aria-modal="true">
                     <div className="modal">
